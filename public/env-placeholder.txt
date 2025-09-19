@@ -1,0 +1,6 @@
+# Placeholder for environment map
+# Add your own HDR or EXR environment map here
+# Rename it to env.hdr or env.exr for automatic loading
+# You can find free HDRs at:
+# - HDRIhaven.com  
+# - Polyhaven.com

@@ -1,0 +1,7 @@
+# Add your custom logo model here
+# Supported formats: .glb, .gltf
+# The LogoGlass component will automatically load logo.glb if present
+# Otherwise it falls back to a procedural torus knot geometry
+
+# Example:
+# logo.glb - Your custom 3D logo model
