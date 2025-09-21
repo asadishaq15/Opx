@@ -7,7 +7,6 @@ import { useScrollStore } from '../lib/scroll'
 /**
  * Camera Controller Component
  * Manages camera movement based on scroll position
- * Adjusted for reversed model animation
  */
 export default function CameraController() {
   const { camera } = useThree()
@@ -19,25 +18,12 @@ export default function CameraController() {
   
   useFrame((_, delta) => {
     // Calculate camera position based on scroll progress
-    if (progress < 0.4) {
-      // During model exit sequence, keep camera fairly stable
-      // but move slightly forward to enhance the motion of models exiting
+    if (progress < 0.8) {
+      // Normal camera behavior for most of the scroll
       cameraRef.current.targetPosition = [
         0,
         0,
-        10 - progress * 1.5, // Gentler forward movement
-      ]
-    } else if (progress < 0.8) {
-      // After models exit, move camera forward to see atmospheric effects
-      const midTransitionProgress = (progress - 0.4) / 0.4 // 0-1 range for middle 40% of scroll
-      const easeInOutProgress = midTransitionProgress < 0.5
-        ? 2 * midTransitionProgress * midTransitionProgress
-        : 1 - Math.pow(-2 * midTransitionProgress + 2, 2) / 2
-      
-      cameraRef.current.targetPosition = [
-        0,
-        0,
-        9.4 - easeInOutProgress * 2.4, // Move camera from 9.4 to 7.0
+        10 - progress * 2, // Move camera closer as we scroll
       ]
     } else {
       // Move camera back for content section
@@ -47,7 +33,7 @@ export default function CameraController() {
       cameraRef.current.targetPosition = [
         0,
         0,
-        7 + easeOutProgress * 8, // Move camera back from 7 to 15
+        8 + easeOutProgress * 7, // Move camera back from 8 to 15
       ]
     }
     
