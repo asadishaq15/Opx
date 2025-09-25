@@ -9,6 +9,7 @@ const CanvasWithNoSSR = dynamic(
   { ssr: false }
 )
 
+// In HomePage.jsx
 export default function HomePage() {
   return (
     <main id="main-content" className="relative">
@@ -21,8 +22,7 @@ export default function HomePage() {
       <TextContentSection />
       
       {/* Invisible scroll container to enable scrolling and trigger scroll events */}
-      {/* Increased from 1500vh to 2000vh to provide more scrolling space */}
-      <div className="h-[1700vh] w-full" />
+      <div className="h-[2500vh] w-full" /> {/* Increased from 2000vh to 2500vh */}
     </main>
   )
 }

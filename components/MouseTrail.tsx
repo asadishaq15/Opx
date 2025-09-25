@@ -12,26 +12,28 @@ interface TrailParticle {
   life: number
   maxLife: number
   size: number
-  startPosition: THREE.Vector3
+  length: number
+  angle: number
 }
 
 /**
  * Mouse Trail Particles Component
- * Creates white light particles that shoot in the direction of mouse movement
+ * Creates light streak particles that follow mouse movement
  */
 export default function MouseTrail({ opacity = 1 }) {
   const meshRef = useRef<THREE.InstancedMesh>(null)
-  const { size, viewport, camera } = useThree()
+  const { size, viewport } = useThree()
   const prefersReducedMotion = useReducedMotion()
   
   const [particles, setParticles] = useState<TrailParticle[]>([])
   const mouseRef = useRef({ x: 0, y: 0 })
   const lastMouseRef = useRef({ x: 0, y: 0 })
   const particleIdRef = useRef(0)
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null)
   
   // Adjust particle count based on device
   const isMobile = size.width < 768
-  const maxParticles = prefersReducedMotion ? 25 : (isMobile ? 50 : 100)
+  const maxParticles = prefersReducedMotion ? 20 : (isMobile ? 40 : 80)
   
   // Handle pointer movement
   useEffect(() => {
@@ -46,47 +48,75 @@ export default function MouseTrail({ opacity = 1 }) {
       const deltaY = currentY - lastMouseRef.current.y
       const speed = Math.sqrt(deltaX * deltaX + deltaY * deltaY)
       
-      // Only create particles if mouse is moving fast enough
-      if (speed > 0.008) { // Lower threshold for more sensitivity
+      // Calculate angle of movement
+      const angle = Math.atan2(deltaY, deltaX)
+      
+      // Only create particles if mouse is moving
+      if (speed > 0.003) {
         const worldPos = new THREE.Vector3(
           currentX * viewport.width * 0.5,
           currentY * viewport.height * 0.5,
-          0 // Keep in same plane
+          0
         )
         
-        // Create straight-line velocity vector
-        const velocity = new THREE.Vector3(
-          deltaX * 15, // Faster, straighter movement
-          deltaY * 15,
-          0 // No Z movement for straight lines
-        ).normalize().multiplyScalar(8) // Consistent speed
+        // Clear any existing timeout
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current)
+        }
         
-        // Create fewer but more visible particles (less on mobile)
-        const particleCount = Math.min(Math.floor(speed * (isMobile ? 15 : 30)), isMobile ? 2 : 3)
+        // Create streaks with varying sizes
+        const createParticles = () => {
+          const particleCount = Math.min(Math.floor(speed * (isMobile ? 15 : 30)), isMobile ? 2 : 3)
+          
+          setParticles(prev => {
+            const newParticles: TrailParticle[] = []
+            
+            for (let i = 0; i < particleCount; i++) {
+              // Calculate length based on speed
+              const length = speed * (Math.random() * 4 + 4)
+              
+              // Small angle variation for each streak
+              const angleVariation = (Math.random() - 0.5) * 0.2
+              const particleAngle = angle + angleVariation
+              
+              // Velocity in direction of movement, but slower
+              const velocity = new THREE.Vector3(
+                Math.cos(particleAngle) * (2 + Math.random() * 2),
+                Math.sin(particleAngle) * (2 + Math.random() * 2),
+                0
+              )
+              
+              newParticles.push({
+                id: particleIdRef.current++,
+                position: worldPos.clone(),
+                velocity,
+                life: 1.0 + Math.random() * 0.5, // Longer life
+                maxLife: 1.0 + Math.random() * 0.5,
+                size: Math.random() * (isMobile ? 0.03 : 0.06) + (isMobile ? 0.02 : 0.04),
+                length,
+                angle: particleAngle
+              })
+            }
+            
+            // Add new particles and remove old ones
+            const updated = [...prev, ...newParticles]
+              .filter(p => p.life > 0)
+              .slice(-maxParticles)
+            
+            return updated
+          })
+          
+          // Schedule next particle creation for continuous effect
+          timeoutRef.current = setTimeout(createParticles, 30)
+        }
         
-        setParticles(prev => {
-          const newParticles: TrailParticle[] = []
-          
-          for (let i = 0; i < particleCount; i++) {
-            const startPos = worldPos.clone()
-            newParticles.push({
-              id: particleIdRef.current++,
-              position: startPos.clone(),
-              startPosition: startPos.clone(),
-              velocity: velocity.clone(), // No spread - straight line
-              life: 1.5, // Longer life for visibility
-              maxLife: 1.5,
-              size: Math.random() * (isMobile ? 0.03 : 0.05) + (isMobile ? 0.02 : 0.03) // Slightly smaller on mobile
-            })
-          }
-          
-          // Add new particles and remove old ones
-          const updated = [...prev, ...newParticles]
-            .filter(p => p.life > 0)
-            .slice(-maxParticles) // Keep only the most recent particles
-          
-          return updated
-        })
+        createParticles()
+      } else {
+        // Clear timeout when mouse stops
+        if (timeoutRef.current) {
+          clearTimeout(timeoutRef.current)
+          timeoutRef.current = null
+        }
       }
       
       lastMouseRef.current = { x: currentX, y: currentY }
@@ -94,22 +124,32 @@ export default function MouseTrail({ opacity = 1 }) {
     }
     
     window.addEventListener('mousemove', handlePointerMove)
-    return () => window.removeEventListener('mousemove', handlePointerMove)
+    return () => {
+      window.removeEventListener('mousemove', handlePointerMove)
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current)
+      }
+    }
   }, [size, viewport, prefersReducedMotion, maxParticles])
   
   useFrame((state, delta) => {
     if (!meshRef.current || prefersReducedMotion) return
     
-    // Update particles - straight line movement, no friction
+    // Update particles
     setParticles(prev => {
-      return prev.map(particle => ({
-        ...particle,
-        position: particle.position.clone().add(
-          particle.velocity.clone().multiplyScalar(delta)
-        ),
-        // No friction - maintain straight line movement
-        life: particle.life - delta * 0.8 // Slower fade for visibility
-      })).filter(p => p.life > 0)
+      return prev.map(particle => {
+        // Slow down over time for fluid motion
+        const slowFactor = particle.life / particle.maxLife
+        const updatedVelocity = particle.velocity.clone().multiplyScalar(slowFactor)
+        
+        return {
+          ...particle,
+          position: particle.position.clone().add(
+            updatedVelocity.clone().multiplyScalar(delta)
+          ),
+          life: particle.life - delta * 0.7 // Slower fade
+        }
+      }).filter(p => p.life > 0)
     })
     
     // Update instanced mesh
@@ -119,16 +159,30 @@ export default function MouseTrail({ opacity = 1 }) {
     for (let i = 0; i < maxParticles; i++) {
       if (i < particleArray.length) {
         const particle = particleArray[i]
+        
+        // Position at center of streak
         dummy.position.copy(particle.position)
-        dummy.scale.setScalar(particle.size * Math.min(particle.life, 1) * opacity) // Apply external opacity
+        
+        // Set rotation based on movement direction
+        dummy.rotation.z = particle.angle
+        
+        // Scale x to create streak effect, scale y for width
+        const lifeRatio = particle.life / particle.maxLife
+        const fadeMultiplier = Math.sin(lifeRatio * Math.PI) // Fade in and out smoothly
+        const lengthFactor = particle.length * fadeMultiplier
+        
+        dummy.scale.set(
+          lengthFactor, // Length of streak
+          particle.size * fadeMultiplier * opacity, // Width of streak
+          1
+        )
+        
         dummy.updateMatrix()
         meshRef.current.setMatrixAt(i, dummy.matrix)
         
-        // Gradient color based on life with glow effect
-        const alpha = Math.min(particle.life, 1) * opacity // Apply external opacity
-        const hue = (particle.id * 0.1 + state.clock.elapsedTime * 0.5) % 1
-        const color = new THREE.Color().setHSL(hue, 1, 0.7)
-        color.multiplyScalar(alpha * 3) // Extra bright for glow
+        // Bright color with blue-white tint
+        const intensity = fadeMultiplier * 3 * opacity
+        const color = new THREE.Color(0.7, 0.9, 1.0).multiplyScalar(intensity)
         meshRef.current.setColorAt(i, color)
       } else {
         // Hide unused instances
@@ -151,18 +205,14 @@ export default function MouseTrail({ opacity = 1 }) {
       ref={meshRef}
       args={[undefined, undefined, maxParticles]}
     >
-      <sphereGeometry args={[1, 8, 8]} />
-      <meshStandardMaterial
+      <planeGeometry args={[1, 1]} />
+      <meshBasicMaterial
         transparent
         opacity={opacity}
         vertexColors
         blending={THREE.AdditiveBlending}
         depthWrite={false}
-        color="white"
-        emissive="white"
-        emissiveIntensity={2.0 * opacity}
-        roughness={0}
-        metalness={0.5}
+        color="#ffffff"
         toneMapped={false}
       />
     </instancedMesh>

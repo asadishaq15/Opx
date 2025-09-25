@@ -17,12 +17,12 @@ export default function LiquidContentSection() {
     // Increase section duration by using even smaller visibility ranges (0.075)
     // This gives more time for each section to be visible
     const sections = [
-      { visibilityThreshold: 0.7, visibilityRange: 0.075, exitThreshold: 0.775 },
-      { visibilityThreshold: 0.775, visibilityRange: 0.075, exitThreshold: 0.85 },
-      { visibilityThreshold: 0.85, visibilityRange: 0.075, exitThreshold: 0.925 },
-      { visibilityThreshold: 0.925, visibilityRange: 0.075, exitThreshold: 1.0 }
-    ]
-
+        { visibilityThreshold: 0.7, visibilityRange: 0.075, exitThreshold: 0.775 },
+        { visibilityThreshold: 0.775, visibilityRange: 0.075, exitThreshold: 0.85 },
+        { visibilityThreshold: 0.85, visibilityRange: 0.075, exitThreshold: 0.925 },
+        // Make the last section exit earlier to make room for logo animation
+        { visibilityThreshold: 0.925, visibilityRange: 0.075, exitThreshold: 0.975 }
+      ]
     sectionRefs.current.forEach((ref, index) => {
       if (!ref.current) return
 

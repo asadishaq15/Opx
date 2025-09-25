@@ -9,6 +9,7 @@ import CameraController from './CameraController'
 import FalconModel from './FalconModel'
 import PalmParticles from './PalmParticles'
 import LiquidContentSection from './LiquidContentSection'
+import ReversedLogoAnimation from './ReversedLogoAnimation' // Import the new component
 import { useScrollStore } from '../lib/scroll'
 
 /**
@@ -20,6 +21,8 @@ export default function Scene3D() {
   
   // Calculate opacity values for secondary elements
   // This shows them after the models have moved out of view
+  const atmosphericParticlesOpacity = progress < 0.2 ? 0 : Math.min((progress - 0.2) / 0.2, 1)
+  // Keep original calculation for other secondary elements
   const secondaryElementsOpacity = progress < 0.4 ? 0 : Math.min((progress - 0.4) / 0.2, 1)
   
   return (
@@ -61,15 +64,17 @@ export default function Scene3D() {
       />
       
       {/* Reduced stars for performance */}
-      <Stars 
-        radius={80} 
-        depth={40} 
-        count={1000} 
-        factor={3} 
-        saturation={0} 
-        fade 
-        speed={0.3}
-      />
+      <group scale={1 + progress * 0.5}>
+  <Stars 
+    radius={90} 
+    depth={50}   
+    count={2000} 
+    factor={4}   
+    saturation={0.2}
+    speed={0.5 + progress * 2} // Increase rotation speed with scroll
+    fade={true}    // Enable fade effect
+  />
+</group>
       
       {/* Reduced sparkles for performance */}
       <Sparkles 
@@ -91,7 +96,7 @@ export default function Scene3D() {
       <MouseTrail />
       
       {/* Atmospheric Particles - appear after models have exited */}
-      <AtmosphericParticles opacity={secondaryElementsOpacity} />
+      <AtmosphericParticles opacity={atmosphericParticlesOpacity} />
       
       {/* Flying Falcon - appears after models have exited */}
       <FalconModel opacity={secondaryElementsOpacity} />
@@ -101,6 +106,9 @@ export default function Scene3D() {
       
       {/* Liquid Content Section - Appears at the end */}
       <LiquidContentSection />
+      
+      {/* New Final Logo Animation - Appears after text content */}
+      <ReversedLogoAnimation />
       
       {/* Enhanced volumetric fog effect for depth */}
       <fog attach="fog" args={['#050510', 5, 35]} />

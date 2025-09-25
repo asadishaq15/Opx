@@ -25,9 +25,9 @@ export default function CameraController() {
         0,
         10 - progress * 2, // Move camera closer as we scroll
       ]
-    } else {
+    } else if (progress < 0.95) {
       // Move camera back for content section
-      const contentTransitionProgress = (progress - 0.8) / 0.2 // 0-1 range for last 20% of scroll
+      const contentTransitionProgress = (progress - 0.8) / 0.15 // 0-1 range for content section
       const easeOutProgress = 1 - Math.pow(1 - contentTransitionProgress, 3) // Cubic ease out
       
       cameraRef.current.targetPosition = [
@@ -35,8 +35,17 @@ export default function CameraController() {
         0,
         8 + easeOutProgress * 7, // Move camera back from 8 to 15
       ]
+    } else {
+      // Final logo animation - zoom in slightly for a dramatic finish
+      const finalProgress = (progress - 0.95) / 0.05
+      const easeInProgress = finalProgress * finalProgress // Quadratic ease in
+      
+      cameraRef.current.targetPosition = [
+        0,
+        0,
+        15 - easeInProgress * 6, // Move camera from 15 to 9 (more dramatic zoom)
+      ]
     }
-    
     // Smooth camera movement
     camera.position.x += (cameraRef.current.targetPosition[0] - camera.position.x) * 2 * delta
     camera.position.y += (cameraRef.current.targetPosition[1] - camera.position.y) * 2 * delta
